@@ -1,0 +1,127 @@
+\documentclass[a4paper]{article}
+\author{Narendra Syahrasyad}
+
+\usepackage[english]{babel}
+\usepackage[utf8]{inputenc}
+\usepackage{amsmath}
+\usepackage{amsthm}
+\usepackage{graphicx}
+\usepackage[colorinlistoftodos]{todonotes}
+\newcommand{\code}[1]{\texttt{#1}}
+\newcommand{\centerfig}[2]{\begin{center}\includegraphics[width=#1\textwidth]{#2}\end{center}}
+
+\title{ISA and Sequential CPU\\
+\vspace{5mm}
+\large CPSC 313 M1}
+\date{}
+
+\begin{document}
+\maketitle
+
+\section{Processing in Stages}
+
+Processing an instruction involves a number of different operations.
+
+\begin{enumerate}
+    \item \textbf{Fetch}
+    
+    Reads bytes of an instruction from memory. Parses the instruction into several variables:
+    \begin{enumerate}
+        \item \code{icode} - instruction code
+        \item \code{ifun} - instruction function
+        \item \code{rA} - first register operand, if exists
+        \item \code{rB} - second register operand, if exists
+        \item \code{valC} - 4 byte word included in instruction, if exists
+    \end{enumerate}
+    Fetch computes an additional variable \code{valP}, which is equal to \code{PC} $+$ length of fetched instruction.
+    
+    \item \textbf{Decode}
+    
+    Reads values from register file into \code{valA} and \code{valB}. Typically reads from registers \code{rA} and \code{rB}, but sometimes from other registers.
+    
+    \item \textbf{Execute}
+    
+    ALU either performs the operation specified by the instruction, computes address of a memory reference, or manipulates the stack pointer. The result is saved onto \code{valE}.
+    
+    Condition codes are set afterwards. Jump instructions use these codes to determine if a branch should be taken.
+    
+    \item \textbf{Memory}
+    
+    Reads/writes data from/to memory. Value read saved as \code{valM}.
+    
+    \item \textbf{Write back}
+    
+    Writes up to two results to the register file.
+    
+    \item \textbf{PC update}
+    
+    The PC is set to the address of the next instruction.
+\end{enumerate}
+
+\subsection{Condition Codes}
+There are three condition codes:
+
+\begin{itemize}
+    \item \code{ZF} Zero Flag: Indicates if the result \code{valE} was zero
+    \item \code{SF} Sign Flag: Indicates if the result was negative
+    \item \code{OF} Overflow Flag: Indicates if the result of the operation did not fit in the register width
+\end{itemize}
+
+\subsection{Execution of OPq}
+All \code{OPq} operations follow the same format:
+
+\begin{center}
+    \begin{tabular}{l l}
+        Stage & Generic \\
+        \hline
+        Fetch & \code{icode:iFun} $\leftarrow$ $M_1$[PC]\\
+            & \code{rA:rB} $\leftarrow$ $M_1$[PC + 1]\\
+            & \\
+            & \code{valP} $\leftarrow$ PC + 2\\
+        Decode & \code{valA} $\leftarrow$ R[rA]\\
+            & \code{valB} $\leftarrow$ R[rB]\\
+        Execute & \code{valE} $\leftarrow$ \code{valB} OP \code{valA}\\
+                & set condition codes \\
+        Memory & \\
+        Write back & R[rB] $\leftarrow$ \code{valE}\\
+        PC update & PC $\leftarrow$ \code{valP}
+    \end{tabular}
+\end{center}
+
+\subsection{Jump/Call/Ret Instructions}
+In \code{Y86} ISA the stack grows \textbf{down}. 
+\begin{itemize}
+    \item The \code{call} instruction decrements the stack pointer and saves the return address to the first element of the stack.
+    \item The \code{ret} instruction increments the stack pointer and gets the return address from the top of the stack.
+\end{itemize}
+
+\section{Hardware Structure}
+
+\centerfig{0.8}{seq-cpu.png}
+
+The different hardware units are associated with different processing stages.
+
+\begin{enumerate}
+    \item \textbf{Fetch}
+    
+    Using the \code{PC} register at the bottom, the instruction memory reads and parses the bytes of the instruction. The PC increment unit computes \code{valP}.
+
+    \item \textbf{Decode}
+    
+    The register file uses its A and B ports to read the values of \code{rA} and \code{rB} to \code{valA} and \code{valB}.
+
+    \item \textbf{Execute}
+    
+    The ALU computes the appropriate value according to the instruction type. The condition code register (CC) contains all condition codes. It computes \code{Cnd} which is used for all conditional instructions.
+
+    \item \textbf{Memory}
+    
+    The data memory reads/writes a word of memory when executing a memory instruction.
+
+    \item \textbf{Write back}
+    
+    Writes back to register file through ports E and M. Port E is for values calculated by ALU, port M is for values read from data memory.
+
+\end{enumerate}
+
+\end{document}
